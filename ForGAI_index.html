@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fear & Greed Index - AI Tokens</title>
+  <style>
+    body {
+      margin: 0;
+      background: #f0f0f0;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .gauge-container {
+      position: relative;
+      width: 400px; /* Adjust if needed */
+    }
+    .gauge-value {
+      font-size: 28px;
+      font-weight: bold;
+      fill: #333;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+    .sub-labels {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .sub-labels div {
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .coffee-line {
+      margin-top: 25px;
+      font-size: 0.95em;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Fear &amp; Greed Index - AI Tokens</h1>
+
+<div class="gauge-container">
+  <svg
+    id="gauge-svg"
+    width="100%"
+    viewBox="0 0 200 200"
+    preserveAspectRatio="xMidYMid meet"
+  >
+    <!-- 
+      We have 5 base arcs, each 20 points of [0..100], plus
+      5 highlight arcs that we only show for the active segment.
+
+      Arcs: 0..20 (red), 20..40 (orange), 40..60 (yellow), 
+            60..80 (green), 80..100 (dark green)
+      stroke-width=20 for base, 26 for highlight.
+      We use "A 80,80 0 0 0" to draw clockwise arcs from left to right.
+    -->
+
+    <!-- BASE ARCS (visible always) -->
+    <path
+      d="M 20,100 A 80,80 0 0 0 35.28,147.02"
+      fill="none"
+      stroke="#D9534F"  <!-- 0..20: Extreme Fear -->
+      stroke-width="20"
+    ></path>
+    <path
+      d="M 35.28,147.02 A 80,80 0 0 0 75.28,176.08"
+      fill="none"
+      stroke="#F0AD4E"  <!-- 20..40: Fear -->
+      stroke-width="20"
+    ></path>
+    <path
+      d="M 75.28,176.08 A 80,80 0 0 0 124.72,176.08"
+      fill="none"
+      stroke="#FFD700"  <!-- 40..60: Neutral -->
+      stroke-width="20"
+    ></path>
+    <path
+      d="M 124.72,176.08 A 80,80 0 0 0 164.72,147.02"
+      fill="none"
+      stroke="#5CB85C"  <!-- 60..80: Greed -->
+      stroke-width="20"
+    ></path>
+    <path
+      d="M 164.72,147.02 A 80,80 0 0 0 180,100"
+      fill="none"
+      stroke="#006400"  <!-- 80..100: Extreme Greed -->
+      stroke-width="20"
+    ></path>
+
+    <!-- HIGHLIGHT ARCS (thicker, hidden initially) -->
+    <path
+      id="arcHighlight0_20"
+      d="M 20,100 A 80,80 0 0 0 35.28,147.02"
+      fill="none"
+      stroke="#D9534F"
+      stroke-width="26"
+      style="visibility:hidden"
+    ></path>
+    <path
+      id="arcHighlight20_40"
+      d="M 35.28,147.02 A 80,80 0 0 0 75.28,176.08"
+      fill="none"
+      stroke="#F0AD4E"
+      stroke-width="26"
+      style="visibility:hidden"
+    ></path>
+    <path
+      id="arcHighlight40_60"
+      d="M 75.28,176.08 A 80,80 0 0 0 124.72,176.08"
+      fill="none"
+      stroke="#FFD700"
+      stroke-width="26"
+      style="visibility:hidden"
+    ></path>
+    <path
+      id="arcHighlight60_80"
+      d="M 124.72,176.08 A 80,80 0 0 0 164.72,147.02"
+      fill="none"
+      stroke="#5CB85C"
+      stroke-width="26"
+      style="visibility:hidden"
+    ></path>
+    <path
+      id="arcHighlight80_100"
+      d="M 164.72,147.02 A 80,80 0 0 0 180,100"
+      fill="none"
+      stroke="#006400"
+      stroke-width="26"
+      style="visibility:hidden"
+    ></path>
+
+    <!-- Center text (shows the numeric gauge value) -->
+    <text
+      class="gauge-value"
+      id="gauge-value"
+      x="100"
+      y="110"
+    >
+      0
+    </text>
+  </svg>
+</div>
+
+<!-- Legend below -->
+<div class="sub-labels">
+  <div style="color:#D9534F;">0-20: Extreme Fear</div>
+  <div style="color:#F0AD4E;">20-40: Fear</div>
+  <div style="color:#FFD700;">40-60: Neutral</div>
+  <div style="color:#5CB85C;">60-80: Greed</div>
+  <div style="color:#006400;">80-100: Extreme Greed</div>
+</div>
+
+<!-- Buy me a coffee line -->
+<div class="coffee-line">
+  Buy me a coffee: 0xB34E46BA4464577b0b1CE425a3Ad72b8870e9d01 (ETH/BASE Network)
+</div>
+
+<script>
+//----------------------
+// GAUGE LOGIC
+//----------------------
+const highlightArcs = {
+  "0_20":   document.getElementById("arcHighlight0_20"),
+  "20_40":  document.getElementById("arcHighlight20_40"),
+  "40_60":  document.getElementById("arcHighlight40_60"),
+  "60_80":  document.getElementById("arcHighlight60_80"),
+  "80_100": document.getElementById("arcHighlight80_100")
+};
+const gaugeValue = document.getElementById("gauge-value");
+
+function hideAllHighlights() {
+  for (const key in highlightArcs) {
+    highlightArcs[key].style.visibility = "hidden";
+  }
+}
+
+function showHighlight(rangeKey) {
+  highlightArcs[rangeKey].style.visibility = "visible";
+}
+
+/**
+ * updateGauge(score):
+ *  - Score in [0..100], can be decimal. 
+ *  - We'll display it with 1 decimal place.
+ *  - We highlight the slice in which the score falls.
+ */
+function updateGauge(score) {
+  // clamp
+  if (score < 0)   score = 0;
+  if (score > 100) score = 100;
+
+  // Show with 1 decimal place
+  gaugeValue.textContent = score.toFixed(1);
+
+  // Hide existing highlights
+  hideAllHighlights();
+
+  // Show relevant slice
+  if (score <= 20) {
+    showHighlight("0_20");
+  } else if (score <= 40) {
+    showHighlight("20_40");
+  } else if (score <= 60) {
+    showHighlight("40_60");
+  } else if (score <= 80) {
+    showHighlight("60_80");
+  } else {
+    showHighlight("80_100");
+  }
+}
+
+//----------------------
+// FETCH & SENTIMENT LOGIC
+//----------------------
+
+/**
+ * We combine 1h, 24h, and 7d changes into a composite, 
+ * weighting by market cap. Then map to [0..100].
+ * Example formula:
+ *   composite1h = WeightedAvg(coin.price_change_percentage_1h_in_currency)
+ *   composite24h= WeightedAvg(coin.price_change_percentage_24h_in_currency)
+ *   composite7d = WeightedAvg(coin.price_change_percentage_7d_in_currency)
+ * 
+ * Then finalComposite = w1*composite1h + w2*composite24h + w3*composite7d
+ * 
+ * Then fearGreedScore = 50 + (2 * finalComposite)
+ */
+async function fetchSentimentAndUpdate() {
+  try {
+    // We'll request multiple price change percentages via this param:
+    // &price_change_percentage=1h,24h,7d
+    const url =
+      "https://api.coingecko.com/api/v3/coins/markets"
+      + "?vs_currency=usd"
+      + "&category=artificial-intelligence"
+      + "&order=market_cap_desc"
+      + "&per_page=100"
+      + "&page=1"
+      + "&sparkline=false"
+      + "&price_change_percentage=1h,24h,7d";
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("No AI token data returned");
+    }
+
+    // Weighted sums for each timeframe
+    let totalMarketCap = 0;
+    let weightedSum1h = 0;
+    let weightedSum24h = 0;
+    let weightedSum7d = 0;
+
+    // 1) First pass: compute total market cap
+    data.forEach(coin => {
+      if (coin.market_cap) {
+        totalMarketCap += coin.market_cap;
+      }
+    });
+
+    // 2) Second pass: accumulate weighted sums
+    data.forEach(coin => {
+      const mc = coin.market_cap;
+      if (!mc) return; // skip any with no market cap
+      // Each coin might have coin.price_change_percentage_1h_in_currency, etc.
+      const p1h = coin.price_change_percentage_1h_in_currency || 0;
+      const p24h= coin.price_change_percentage_24h_in_currency || 0;
+      const p7d = coin.price_change_percentage_7d_in_currency || 0;
+
+      weightedSum1h  += mc * p1h;
+      weightedSum24h += mc * p24h;
+      weightedSum7d  += mc * p7d;
+    });
+
+    // 3) Weighted average for each timeframe
+    let composite1h = 0;
+    let composite24h= 0;
+    let composite7d = 0;
+    if (totalMarketCap > 0) {
+      composite1h  = weightedSum1h  / totalMarketCap;
+      composite24h = weightedSum24h / totalMarketCap;
+      composite7d  = weightedSum7d  / totalMarketCap;
+    }
+
+    // 4) Blend them. For example: 20% 1h, 50% 24h, 30% 7d
+    const w1 = 0.2, w2 = 0.5, w3 = 0.3;
+    const finalComposite = (w1 * composite1h) + (w2 * composite24h) + (w3 * composite7d);
+
+    // 5) Map to [0..100]. 
+    //    50 => neutral; each +1 => +2 points, each -1 => -2 points
+    let fearGreedScore = 50 + (2 * finalComposite);
+
+    // 6) clamp
+    if (fearGreedScore < 0)   fearGreedScore = 0;
+    if (fearGreedScore > 100) fearGreedScore = 100;
+
+    // 7) Update the gauge
+    updateGauge(fearGreedScore);
+
+  } catch (err) {
+    console.error("Error fetching or computing AI Fear & Greed:", err);
+    // fallback
+    updateGauge(50.0);
+  }
+}
+
+// INITIAL LOAD
+fetchSentimentAndUpdate();
+
+// Refresh every 3 minutes (180,000 ms)
+setInterval(fetchSentimentAndUpdate, 180000);
+</script>
+
+</body>
+</html>
